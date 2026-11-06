@@ -1,13 +1,4 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
-
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { VehicleTypeEnum } from '../../../common/enums/vehicle-type.enum';
 import { ServiceCategoryEntity } from './service-category.entity';
 import { ServiceInclusionEntity } from './service-inclusion.entity';
@@ -37,11 +28,7 @@ export class ServiceEntity {
   @Column({ type: 'text', nullable: true })
   description!: string | null;
 
-  @Column({
-    type: 'decimal',
-    precision: 10,
-    scale: 2,
-  })
+  @Column({type: 'decimal', precision: 10,scale: 2})
   price!: string;
 
   @Column({ type: 'int' })
