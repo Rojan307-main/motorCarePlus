@@ -51,14 +51,17 @@ const env = (() => {
       Object.entries(process.env).reduce(
         (prev, [key, val]) => ({
           ...prev,
-          [key]: (() => {
-            try {
-              if (val) return JSON.parse(val);
-              return val;
-            } catch (error) {
-              return val;
-            }
-          })(),
+         [key]: (() => {
+  try {
+    // Keep MAILER_PASSWORD as a string
+    if (key === "MAILER_PASSWORD") return val;
+
+    if (val) return JSON.parse(val);
+    return val;
+  } catch (error) {
+    return val;
+  }
+})(),
         }),
         {},
       ),
