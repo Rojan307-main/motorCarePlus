@@ -7,20 +7,20 @@ import { Request, Response, NextFunction } from "express";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import { join } from "path";
-import { ValidationPipe } from "@nestjs/common"; 
-
+import { ValidationPipe } from "@nestjs/common";
+ 
 dotenv.config();
-
+ 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-
+ 
   app.useStaticAssets(join(process.cwd(), "uploads"), {
     prefix: "/uploads/",
   });
-
+ 
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.set("trust proxy", true);
-
+ 
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -37,8 +37,8 @@ async function bootstrap() {
       crossOriginEmbedderPolicy: false,
     }),
   );
-
-
+ 
+ 
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -46,13 +46,13 @@ async function bootstrap() {
       transform: true,
     }),
   );
-
+ 
   app.use((req: Request, res: Response, next: NextFunction) => {
     const now = new Date().toISOString().replace("T", " ").replace(/\..+/, "");
     console.log(`[HTTP] [${now}] ${req.method} ${req.originalUrl}`);
     next();
   });
-
+ 
   const config = new DocumentBuilder()
     .setTitle("MotorCare+ API")
     .setVersion("1.0")
@@ -60,22 +60,22 @@ async function bootstrap() {
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup("api", app, document);
-
+ 
   const cookieSecret =
     process.env.COOKIE_SECRET || "fallback-secret-dont-use-in-prod";
   app.use(cookieParser(cookieSecret));
-
+ 
   const allowedOrigins = process.env.CORS_ORIGINS
     ? process.env.CORS_ORIGINS.split(",").map((origin) => origin.trim())
     : [];
-
+ 
   app.enableCors({
     origin: allowedOrigins,
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     maxAge: 86400,
   });
-
+ 
   await app.listen(parseInt(process.env.PORT as string));
 }
 bootstrap();

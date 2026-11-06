@@ -26,9 +26,7 @@ export class BookingEntity {
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Column({
-    type: 'uuid',
-  })
+  @Column({type: 'uuid',})
   user_id!: string;
 
   @ManyToOne(
@@ -38,9 +36,7 @@ export class BookingEntity {
   @JoinColumn({ name: 'user_id' })
   user!: UserEntity;
 
-  @Column({
-    type: 'int',
-  })
+  @Column({type: 'int',})
   service_id!: number;
 
   @ManyToOne(
@@ -50,9 +46,7 @@ export class BookingEntity {
   @JoinColumn({ name: 'service_id' })
   service!: ServiceEntity;
 
-  @Column({
-    type: 'uuid',
-  })
+  @Column({type: 'uuid',})
   vehicle_id!: string;
 
   @ManyToOne(
@@ -62,36 +56,21 @@ export class BookingEntity {
   @JoinColumn({ name: 'vehicle_id' })
   vehicle!: VehicleEntity;
 
-  @Column({
-    type: 'enum',
-    enum: VehicleTypeEnum,
-  })
+  @Column({type: 'enum', enum: VehicleTypeEnum,})
   vehicle_type!: VehicleTypeEnum;
 
-  @Column({
-    type: 'date',
-  })
+  @Column({type: 'date',})
   booking_date!: string;
 
-  @Column({
-    type: 'time',
-  })
+  @Column({type: 'time',})
   start_time!: string;
 
-  @Column({
-    type: 'time',
-  })
+  @Column({type: 'time',})
   end_time!: string;
 
-  @Column({
-    type: 'enum',
-    enum: BookingStatusEnum,
-    default: BookingStatusEnum.PENDING,
-  })
+  @Column({type: 'enum', enum: BookingStatusEnum, default: BookingStatusEnum.PENDING,})
   status!: BookingStatusEnum;
 
-  @CreateDateColumn({
-    type: 'timestamp',
-  })
+  @CreateDateColumn({type: 'timestamp',})
   created_at!: Date;
 }

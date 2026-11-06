@@ -1,13 +1,4 @@
-
-import {
-  IsDateString,
-  IsEnum,
-  IsInt,
-  IsUUID,
-  Matches,
-  Min,
-} from 'class-validator';
-
+import { IsDateString, IsEnum, IsInt, IsUUID, Matches, Min } from 'class-validator';
 import { VehicleTypeEnum } from '../../../common/enums/vehicle-type.enum';
 
 export class CreateBookingDto {

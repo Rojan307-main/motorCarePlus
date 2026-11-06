@@ -2,84 +2,51 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
-  ParseEnumPipe,
   ParseIntPipe,
   Patch,
   Post,
-  Query,
 } from '@nestjs/common';
 
 import { ServiceCatalogService } from './service-catalog.service';
 
 import {
-  CreateServiceDto,
-  UpdateServiceDto,
+  CreateServiceCategoryDto,
+  UpdateServiceCategoryDto,
 } from './dto/service-catalog.dto';
 
-import { VehicleTypeEnum } from '../../common/enums/vehicle-type.enum';
-
-@Controller('services')
-export class  ServiceCategoryController {
+@Controller('service-categories')
+export class ServiceCategoryController {
   constructor(
     private readonly serviceCatalogService: ServiceCatalogService,
   ) {}
 
-  // GET /services
+  // GET /service-categories
   @Get()
-  findAll(
-    @Query('category_id', new ParseIntPipe({ optional: true }))
-    categoryId?: number,
+  findAll() {
+    return this.serviceCatalogService.findAllCategories();
+  }
 
-    @Query(
-      'vehicle_type',
-      new ParseEnumPipe(VehicleTypeEnum, { optional: true }),
-    )
-    vehicleType?: VehicleTypeEnum,
-
-    @Query('search')
-    search?: string,
+  // POST /service-categories
+  @Post()
+  create(
+    @Body() createCategoryDto: CreateServiceCategoryDto,
   ) {
-    return this.serviceCatalogService.findAll(
-      categoryId,
-      vehicleType,
-      search,
+    return this.serviceCatalogService.createCategory(
+      createCategoryDto,
     );
   }
 
-  // GET /services/:id
-  @Get(':id')
-  findOne(
-    @Param('id', ParseIntPipe)
-    id: number,
-  ) {
-    return this.serviceCatalogService.findOne(id);
-  }
-
-  // POST /services
-  @Post()
-  create(
-    @Body() createServiceDto: CreateServiceDto,
-  ) {
-    return this.serviceCatalogService.create(createServiceDto);
-  }
-
-  // PATCH /services/:id
+  // PATCH /service-categories/:id
   @Patch(':id')
   update(
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateServiceDto: UpdateServiceDto,
+    @Body() updateCategoryDto: UpdateServiceCategoryDto,
   ) {
-    return this.serviceCatalogService.update(id, updateServiceDto);
-  }
-
-  // DELETE /services/:id
-  @Delete(':id')
-  deactivate(
-    @Param('id', ParseIntPipe) id: number,
-  ) {
-    return this.serviceCatalogService.deactivate(id);
+    return this.serviceCatalogService.updateCategory(
+      id,
+      updateCategoryDto,
+    );
   }
 }

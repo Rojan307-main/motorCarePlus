@@ -24,57 +24,55 @@ export class BookingsService {
   constructor(
     @InjectRepository(BookingEntity)
     private readonly bookingRepository: Repository<BookingEntity>,
-
     @InjectRepository(ServiceEntity)
     private readonly serviceRepository: Repository<ServiceEntity>,
-
     @InjectRepository(VehicleEntity)
     private readonly vehicleRepository: Repository<VehicleEntity>,
   ) {}
 
-  async create(dto: CreateBookingDto): Promise<BookingEntity> {
-    const service = await this.serviceRepository.findOne({
-      where: {
-        id: dto.service_id,
-        is_active: true,
-      },
-    });
 
-    if (!service) {
-      throw new NotFoundException('Active service not found');
+  public async create(dto: CreateBookingDto): Promise<BookingEntity> {
+    if (!['car', 'bike'].includes(dto.vehicle_type)) {
+      throw new BadRequestException(
+        'Vehicle type must be car or bike',
+      );
     }
 
-    const vehicle = await this.vehicleRepository.findOne({
-      where: {
-        id: dto.vehicle_id,
-      },
-    });
+    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(dto.start_time)) {
+      throw new BadRequestException(
+        'Invalid start time. Use HH:mm format',
+      );
+    }
+
+    const service = await this.serviceRepository.findOne({where: {id: dto.service_id, is_active: true},});
+
+    if (!service) {
+      throw new NotFoundException(
+        'Active service not found',
+      );
+    }
+
+    const vehicle = await this.vehicleRepository.findOne({where: {id: dto.vehicle_id,},});
 
     if (!vehicle) {
       throw new NotFoundException('Vehicle not found');
     }
 
-    if (
-      service.vehicle_type !== 'both' &&
-      service.vehicle_type !== dto.vehicle_type
-    ) {
+    if (service.vehicle_type !== 'both' && service.vehicle_type !== dto.vehicle_type) {
       throw new BadRequestException(
         'Selected service is not available for this vehicle type',
       );
     }
 
-    if (dto.vehicle_type === 'both') {
-      throw new BadRequestException(
-        'A booking must use car or bike as its vehicle type',
-      );
-    }
-
-    const [hours, minutes] = dto.start_time.split(':').map(Number);
+    const [hours, minutes] = dto.start_time
+      .split(':')
+      .map(Number);
 
     const startMinutes = hours * 60 + minutes;
+
     const endMinutes = startMinutes + service.duration_minutes;
 
-    if (endMinutes >= 24 * 60) {
+    if (endMinutes > 24 * 60) {
       throw new BadRequestException(
         'Booking cannot extend beyond midnight',
       );
@@ -83,9 +81,7 @@ export class BookingsService {
     const endHours = Math.floor(endMinutes / 60);
     const endMins = endMinutes % 60;
 
-    const endTime =
-      `${String(endHours).padStart(2, '0')}:` +
-      `${String(endMins).padStart(2, '0')}`;
+    const endTime = `${String(endHours).padStart(2, '0')}:` + `${String(endMins).padStart(2, '0')}`;
 
     const overlappingBooking = await this.bookingRepository
       .createQueryBuilder('booking')
@@ -143,30 +139,21 @@ export class BookingsService {
     return booking;
   }
 
-  async updateStatus(
-    id: number,
-    dto: UpdateBookingStatusDto,
-  ): Promise<BookingEntity> {
+  async updateStatus(id: number, dto: UpdateBookingStatusDto): Promise<BookingEntity> {
+
     const booking = await this.findOne(id);
-
     booking.status = dto.status;
-
     return this.bookingRepository.save(booking);
   }
 
-  async getAvailableSlots(
-    serviceId: number,
-    date: string,
-  ): Promise<string[]> {
-    const service = await this.serviceRepository.findOne({
-      where: {
-        id: serviceId,
-        is_active: true,
-      },
-    });
+  async getAvailableSlots(serviceId: number, date: string): Promise<string[]> {
+
+    const service = await this.serviceRepository.findOne({where: {id: serviceId, is_active: true}});
 
     if (!service) {
-      throw new NotFoundException('Active service not found');
+      throw new NotFoundException(
+        'Active service not found',
+      );
     }
 
     const existingBookings = await this.bookingRepository.find({
