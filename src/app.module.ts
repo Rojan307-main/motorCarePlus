@@ -7,6 +7,7 @@ import global_config from "@/config/global_config";
 import { BullModule } from "@nestjs/bull";
 import { UserModule } from "./modules/user/user.module";
 import { VehicleModule } from "./modules/vehicle/vehicle.module";
+import { ServiceCatalogModule } from './modules/service-catalog/service-catalog.module';
 
 @Module({
   imports: [
@@ -24,8 +25,7 @@ import { VehicleModule } from "./modules/vehicle/vehicle.module";
     }),
     UserModule,
     VehicleModule,
-    
-    // New module will come here 
+    ServiceCatalogModule,
   ],
   controllers: [AppController],
   providers: [AppService],
