@@ -1,21 +1,9 @@
-
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-
-import {
-  BookingEntity,
-  BookingStatusEnum,
-} from './entities/booking.entity';
-
+import { BookingEntity, BookingStatusEnum } from './entities/booking.entity';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingStatusDto } from './dto/update-booking-status.dto';
-
 import { ServiceEntity } from '../service-catalog/entities/service.entity';
 import { VehicleEntity } from '../vehicle/entities/vehicle.entity';
 

@@ -1,23 +1,10 @@
-
-import {
-  BadRequestException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-
 import { ServiceEntity } from './entities/service.entity';
 import { ServiceCategoryEntity } from './entities/service-category.entity';
 import { ServiceInclusionEntity } from './entities/service-inclusion.entity';
-
-import {
-  CreateServiceDto,
-  UpdateServiceDto,
-  CreateServiceCategoryDto,
-  UpdateServiceCategoryDto,
-} from './dto/service-catalog.dto';
-
+import { CreateServiceDto, UpdateServiceDto, CreateServiceCategoryDto, UpdateServiceCategoryDto } from './dto/service-catalog.dto';
 import { VehicleTypeEnum } from '../../common/enums/vehicle-type.enum';
 
 @Injectable()
@@ -25,17 +12,11 @@ export class ServiceCatalogService {
   constructor(
     @InjectRepository(ServiceEntity)
     private readonly serviceRepository: Repository<ServiceEntity>,
-
     @InjectRepository(ServiceCategoryEntity)
     private readonly categoryRepository: Repository<ServiceCategoryEntity>,
-
     @InjectRepository(ServiceInclusionEntity)
     private readonly inclusionRepository: Repository<ServiceInclusionEntity>,
-  ) {}
-
-  // ==============================
-  // SERVICE METHODS
-  // ==============================
+) {}
 
   async findAll(
     categoryId?: number,
@@ -51,14 +32,12 @@ export class ServiceCatalogService {
         categoryActive: true,
       });
 
-    if (categoryId !== undefined) {
-      query.andWhere('service.category_id = :categoryId', {
+    if (categoryId !== undefined) {query.andWhere('service.category_id = :categoryId', {
         categoryId,
       });
     }
 
-    if (vehicleType !== undefined) {
-      query.andWhere(
+    if (vehicleType !== undefined) {query.andWhere(
         '(service.vehicle_type = :vehicleType OR service.vehicle_type = :both)',
         {
           vehicleType,
@@ -67,8 +46,7 @@ export class ServiceCatalogService {
       );
     }
 
-    if (search?.trim()) {
-      query.andWhere('LOWER(service.name) LIKE LOWER(:search)', {
+    if (search?.trim()) {query.andWhere('LOWER(service.name) LIKE LOWER(:search)', {
         search: `%${search.trim()}%`,
       });
     }
@@ -103,9 +81,7 @@ export class ServiceCatalogService {
     return service;
   }
 
-  async create(
-    createServiceDto: CreateServiceDto,
-  ): Promise<ServiceEntity> {
+  async create(createServiceDto: CreateServiceDto,): Promise<ServiceEntity> {
     const category = await this.categoryRepository.findOne({
       where: {
         id: createServiceDto.category_id,
@@ -138,10 +114,7 @@ export class ServiceCatalogService {
     return this.serviceRepository.save(service);
   }
 
-  async update(
-    id: number,
-    updateServiceDto: UpdateServiceDto,
-  ): Promise<ServiceEntity> {
+  async update(id: number, updateServiceDto: UpdateServiceDto,): Promise<ServiceEntity> {
     const service = await this.serviceRepository.findOne({
       where: { id },
       relations: {
@@ -211,9 +184,7 @@ export class ServiceCatalogService {
   }
 
   async deactivate(id: number): Promise<{ message: string }> {
-    const service = await this.serviceRepository.findOne({
-      where: { id },
-    });
+    const service = await this.serviceRepository.findOne({where: { id }});
 
     if (!service) {
       throw new NotFoundException('Service not found');
@@ -232,10 +203,6 @@ export class ServiceCatalogService {
     };
   }
 
-  // ==============================
-  // SERVICE CATEGORY METHODS
-  // ==============================
-
   async findAllCategories(): Promise<ServiceCategoryEntity[]> {
     return this.categoryRepository.find({
       where: { is_active: true },
@@ -243,9 +210,7 @@ export class ServiceCatalogService {
     });
   }
 
-  async createCategory(
-    createCategoryDto: CreateServiceCategoryDto,
-  ): Promise<ServiceCategoryEntity> {
+  async createCategory(createCategoryDto: CreateServiceCategoryDto): Promise<ServiceCategoryEntity> {
     const category = this.categoryRepository.create(createCategoryDto);
 
     return this.categoryRepository.save(category);

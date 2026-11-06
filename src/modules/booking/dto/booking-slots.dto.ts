@@ -1,8 +1,4 @@
-import {IsDateString,
-  IsInt,
-  Min,
-} from 'class-validator';
-
+import { IsDateString, IsInt, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class BookingSlotsDto {

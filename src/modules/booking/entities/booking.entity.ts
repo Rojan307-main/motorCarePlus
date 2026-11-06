@@ -1,17 +1,7 @@
-
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
-
+import {Column,CreateDateColumn,Entity,JoinColumn,ManyToOne,PrimaryGeneratedColumn} from 'typeorm';
 import { UserEntity } from '../../user/entities/user.entity';
 import { VehicleEntity } from '../../vehicle/entities/vehicle.entity';
 import { ServiceEntity } from '../../service-catalog/entities/service.entity';
-
 import { VehicleTypeEnum } from '../../../common/enums/vehicle-type.enum';
 
 export enum BookingStatusEnum {
