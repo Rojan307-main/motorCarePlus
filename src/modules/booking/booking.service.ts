@@ -1,3 +1,4 @@
+
 import {
   BadRequestException,
   Injectable,
@@ -5,7 +6,7 @@ import {
 } from '@nestjs/common';
 
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import {
   BookingEntity,
@@ -53,8 +54,10 @@ export class BookingsService {
       throw new NotFoundException('Vehicle not found');
     }
 
-    if (service.vehicle_type !== 'both' &&
-        service.vehicle_type !== dto.vehicle_type) {
+    if (
+      service.vehicle_type !== 'both' &&
+      service.vehicle_type !== dto.vehicle_type
+    ) {
       throw new BadRequestException(
         'Selected service is not available for this vehicle type',
       );
@@ -149,5 +152,67 @@ export class BookingsService {
     booking.status = dto.status;
 
     return this.bookingRepository.save(booking);
+  }
+
+  async getAvailableSlots(
+    serviceId: number,
+    date: string,
+  ): Promise<string[]> {
+    const service = await this.serviceRepository.findOne({
+      where: {
+        id: serviceId,
+        is_active: true,
+      },
+    });
+
+    if (!service) {
+      throw new NotFoundException('Active service not found');
+    }
+
+    const existingBookings = await this.bookingRepository.find({
+      where: {
+        booking_date: date,
+        status: In([
+          BookingStatusEnum.PENDING,
+          BookingStatusEnum.CONFIRMED,
+        ]),
+      },
+      select: ['start_time', 'end_time'],
+    });
+
+    const slots: string[] = [];
+
+    const openingTime = 9 * 60;
+    const closingTime = 18 * 60;
+    const slotInterval = 30;
+
+    for (
+      let start = openingTime;
+      start + service.duration_minutes <= closingTime;
+      start += slotInterval
+    ) {
+      const end = start + service.duration_minutes;
+
+      const startTime =
+        `${String(Math.floor(start / 60)).padStart(2, '0')}:` +
+        `${String(start % 60).padStart(2, '0')}`;
+
+      const endTime =
+        `${String(Math.floor(end / 60)).padStart(2, '0')}:` +
+        `${String(end % 60).padStart(2, '0')}`;
+
+      const isBooked = existingBookings.some((booking) => {
+        return (
+          booking.start_time < endTime &&
+          booking.end_time > startTime
+        );
+      });
+
+      if (!isBooked) {
+        slots.push(startTime);
+      }
+    }
+
+    return slots;
   }
 }
