@@ -6,7 +6,7 @@ import {
 import { camelCase, snakeCase } from "typeorm/util/StringUtils";
 import * as dotenv from "dotenv";
 dotenv.config();
-
+ 
 /**
  * Snake naming will be used in database operations
  */
@@ -26,7 +26,7 @@ export class SnakeNamingStrategy
         return `${snakeCasedClassName}s`;
     }
   }
-
+ 
   columnName(
     propertyName: string,
     customName: string,
@@ -37,15 +37,15 @@ export class SnakeNamingStrategy
       (customName || snakeCase(propertyName))
     );
   }
-
+ 
   relationName(propertyName: string): string {
     return camelCase(propertyName, true);
   }
-
+ 
   joinColumnName(relationName: string, referencedColumnName: string): string {
     return snakeCase(`${relationName}_${referencedColumnName}`);
   }
-
+ 
   joinTableName(
     firstTableName: string,
     secondTableName: string,
@@ -58,7 +58,7 @@ export class SnakeNamingStrategy
       )}_${secondTableName}`,
     );
   }
-
+ 
   joinTableColumnName(
     tableName: string,
     propertyName: string,
@@ -66,7 +66,7 @@ export class SnakeNamingStrategy
   ): string {
     return snakeCase(`${tableName}_${columnName || propertyName}`);
   }
-
+ 
   classTableInheritanceParentColumnName(
     parentTableName: string,
     parentTableIdPropertyName: string,
@@ -74,7 +74,7 @@ export class SnakeNamingStrategy
     return snakeCase(`${parentTableName}_${parentTableIdPropertyName}`);
   }
 }
-
+ 
 export const dataSourceOptions: DataSourceOptions = {
   type: "postgres",
   host: process.env.DB_HOST,
@@ -93,5 +93,5 @@ export const dataSourceOptions: DataSourceOptions = {
     : false,
   synchronize: false,
 };
-
+ 
 export default dataSourceOptions;
