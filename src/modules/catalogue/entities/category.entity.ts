@@ -28,4 +28,3 @@ export class CategoryEntity {
   @Column({ type: 'boolean', default: true })
   is_active!: boolean;
 }
-}
