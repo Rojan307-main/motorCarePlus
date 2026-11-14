@@ -17,8 +17,6 @@ export class CartService {
     private readonly dataSource: DataSource,
   ) {}
 
-  // ---------- view ----------
-
   async getCart(userId: string) {
     const cart = await this.cartRepository.findOne({
       where: { user_id: userId, status: CartStatusEnum.ACTIVE },
@@ -28,15 +26,12 @@ export class CartService {
     return this.toResponse(userId, cart);
   }
 
-  // ---------- add / increase ----------
-
   async addItem(userId: string, dto: AddCartItemDto) {
     const quantity = dto.quantity ?? 1;
 
     const cart = await this.getOrCreateActiveCart(userId);
 
     await this.dataSource.transaction(async (manager) => {
-      // lock the cart row so two requests on the same cart run one after the other
       await this.lockActiveCart(manager, cart.id);
 
       const product = await this.getPurchasableProduct(manager, dto.product_id);
@@ -60,7 +55,6 @@ export class CartService {
     return this.getCart(userId);
   }
 
-  // ---------- change quantity ----------
 
   async updateItem(userId: string, itemId: number, dto: UpdateCartItemDto) {
     await this.dataSource.transaction(async (manager) => {
@@ -81,7 +75,6 @@ export class CartService {
     return this.getCart(userId);
   }
 
-  // ---------- remove one item ----------
 
   async removeItem(itemId: number, userId: string) {
     await this.dataSource.transaction(async (manager) => {
@@ -95,7 +88,6 @@ export class CartService {
     return this.getCart(userId);
   }
 
-  // ---------- clear ----------
 
   async clear(userId: string) {
     await this.dataSource.transaction(async (manager) => {
@@ -111,10 +103,7 @@ export class CartService {
     return this.getCart(userId);
   }
 
-  // ---------- helpers ----------
-
-  // One active cart per user. The code looks first and creates only when there is none;
-  // a partial unique index in the database catches the rare race of two creates at once.
+  
   private async getOrCreateActiveCart(userId: string): Promise<CartEntity> {
     const find = () =>
       this.cartRepository.findOne({ where: { user_id: userId, status: CartStatusEnum.ACTIVE } });
@@ -198,7 +187,7 @@ export class CartService {
         quantity: item.quantity,
         line_total: fromCents(lineCents),
         stock: item.product.stock,
-        // false when the product or its category was deactivated, or stock dropped below the quantity in the cart
+
         is_available:
           item.product.is_active &&
           item.product.category.is_active &&
