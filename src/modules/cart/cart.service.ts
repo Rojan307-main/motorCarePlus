@@ -4,7 +4,6 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 import { CartEntity } from './entities/cart.entity';
 import { CartItemEntity } from './entities/cart-item.entity';
 import { ProductEntity } from '../product/entities/product.entity';
-import { UserEntity } from '../user/entities/user.entity';
 import { AddCartItemDto, UpdateCartItemDto } from './dto/cart.dto';
 import { CartStatusEnum } from '../../common/enums/cart-status.enum';
 import { fromCents, toCents } from '../../common/helpers/money.helper';
@@ -14,37 +13,25 @@ export class CartService {
   constructor(
     @InjectRepository(CartEntity)
     private readonly cartRepository: Repository<CartEntity>,
-    @InjectRepository(UserEntity)
-    private readonly userRepository: Repository<UserEntity>,
     @InjectDataSource()
     private readonly dataSource: DataSource,
   ) {}
 
-  // ---------- view ----------
-
   async getCart(userId: string) {
     const cart = await this.cartRepository.findOne({
       where: { user_id: userId, status: CartStatusEnum.ACTIVE },
-      relations: { items: { product: true } },
+      relations: { items: { product: { category: true } } },
       order: { items: { id: 'ASC' } },
     });
     return this.toResponse(userId, cart);
   }
 
-  // ---------- add / increase ----------
-
-  async addItem(dto: AddCartItemDto) {
+  async addItem(userId: string, dto: AddCartItemDto) {
     const quantity = dto.quantity ?? 1;
 
-    const user = await this.userRepository.findOne({ where: { id: dto.user_id } });
-    if (!user) {
-      throw new NotFoundException(`User with ID ${dto.user_id} not found`);
-    }
-
-    const cart = await this.getOrCreateActiveCart(dto.user_id);
+    const cart = await this.getOrCreateActiveCart(userId);
 
     await this.dataSource.transaction(async (manager) => {
-      // lock the cart row so two requests on the same cart run one after the other
       await this.lockActiveCart(manager, cart.id);
 
       const product = await this.getPurchasableProduct(manager, dto.product_id);
@@ -65,14 +52,13 @@ export class CartService {
       }
     });
 
-    return this.getCart(dto.user_id);
+    return this.getCart(userId);
   }
 
-  // ---------- change quantity ----------
 
-  async updateItem(itemId: number, dto: UpdateCartItemDto) {
+  async updateItem(userId: string, itemId: number, dto: UpdateCartItemDto) {
     await this.dataSource.transaction(async (manager) => {
-      const cart = await this.findLockedActiveCartOrFail(manager, dto.user_id);
+      const cart = await this.findLockedActiveCartOrFail(manager, userId);
 
       const item = await manager.findOne(CartItemEntity, { where: { id: itemId, cart_id: cart.id } });
       if (!item) {
@@ -86,10 +72,9 @@ export class CartService {
       await manager.save(item);
     });
 
-    return this.getCart(dto.user_id);
+    return this.getCart(userId);
   }
 
-  // ---------- remove one item ----------
 
   async removeItem(itemId: number, userId: string) {
     await this.dataSource.transaction(async (manager) => {
@@ -103,7 +88,6 @@ export class CartService {
     return this.getCart(userId);
   }
 
-  // ---------- clear ----------
 
   async clear(userId: string) {
     await this.dataSource.transaction(async (manager) => {
@@ -119,10 +103,7 @@ export class CartService {
     return this.getCart(userId);
   }
 
-  // ---------- helpers ----------
-
-  // One active cart per user. The code looks first and creates only when there is none;
-  // a partial unique index in the database catches the rare race of two creates at once.
+  
   private async getOrCreateActiveCart(userId: string): Promise<CartEntity> {
     const find = () =>
       this.cartRepository.findOne({ where: { user_id: userId, status: CartStatusEnum.ACTIVE } });
@@ -206,8 +187,11 @@ export class CartService {
         quantity: item.quantity,
         line_total: fromCents(lineCents),
         stock: item.product.stock,
-        // false when the product was deactivated or stock dropped below the quantity in the cart
-        is_available: item.product.is_active && item.product.stock >= item.quantity,
+
+        is_available:
+          item.product.is_active &&
+          item.product.category.is_active &&
+          item.product.stock >= item.quantity,
       };
     });
 

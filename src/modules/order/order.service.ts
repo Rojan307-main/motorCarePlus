@@ -1,6 +1,7 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, FindOptionsWhere, In, Repository } from 'typeorm';
+import type { AuthUser } from '../auth/jwt.strategy';
 import { OrderEntity } from './entities/order.entity';
 import { OrderItemEntity } from './entities/order-item.entity';
 import { PaymentEntity } from '../payment/entities/payment.entity';
@@ -12,6 +13,7 @@ import { CheckoutDto, ListOrdersQueryDto, UpdateOrderStatusDto } from './dto/ord
 import { CartStatusEnum } from '../../common/enums/cart-status.enum';
 import { FulfilmentMethodEnum } from '../../common/enums/fulfilment-method.enum';
 import { OrderStatusEnum } from '../../common/enums/order-status.enum';
+import { RoleEnum } from '../../common/enums/role.enum';
 import { PaymentStatusEnum } from '../../common/enums/payment-status.enum';
 import { fromCents, toCents } from '../../common/helpers/money.helper';
 import { buildPaginatedResponse, DEFAULT_PAGE_LIMIT } from '../../common/helpers/pagination.helper';
@@ -19,7 +21,8 @@ import { buildPaginatedResponse, DEFAULT_PAGE_LIMIT } from '../../common/helpers
 // which status changes an admin may make
 const ALLOWED_TRANSITIONS: Record<OrderStatusEnum, OrderStatusEnum[]> = {
   [OrderStatusEnum.PENDING]: [OrderStatusEnum.PAID, OrderStatusEnum.CANCELLED],
-  [OrderStatusEnum.PAID]: [OrderStatusEnum.CANCELLED],
+  // a paid order cannot be cancelled for now (there is no refund state for payments)
+  [OrderStatusEnum.PAID]: [],
   [OrderStatusEnum.CANCELLED]: [],
 };
 
@@ -32,9 +35,16 @@ export class OrderService {
     private readonly dataSource: DataSource,
   ) {}
 
+  // a normal user may only open their own orders; an admin may open any
+  private assertOwnerOrAdmin(order: OrderEntity, user: AuthUser) {
+    if (user.role !== RoleEnum.ADMIN && order.user_id !== user.user_id) {
+      throw new ForbiddenException('You can only access your own orders');
+    }
+  }
+
   // ---------- checkout (one database transaction) ----------
 
-  async checkout(dto: CheckoutDto) {
+  async checkout(userId: string, dto: CheckoutDto) {
     const isDelivery = dto.fulfilment_method === FulfilmentMethodEnum.DELIVERY;
     const deliveryAddress = isDelivery ? (dto.delivery_address ?? '').trim() : null;
     if (isDelivery && !deliveryAddress) {
@@ -45,7 +55,7 @@ export class OrderService {
     const orderId = await this.dataSource.transaction(async (manager) => {
       // 1. lock the user's active cart, so the same cart cannot be checked out twice at once
       const cart = await manager.findOne(CartEntity, {
-        where: { user_id: dto.user_id, status: CartStatusEnum.ACTIVE },
+        where: { user_id: userId, status: CartStatusEnum.ACTIVE },
         lock: { mode: 'pessimistic_write' },
       });
       if (!cart) {
@@ -103,7 +113,7 @@ export class OrderService {
 
       const order = await manager.save(
         manager.create(OrderEntity, {
-          user_id: dto.user_id,
+          user_id: userId,
           total_amount: totalAmount,
           fulfilment_method: dto.fulfilment_method,
           delivery_address: deliveryAddress,
@@ -157,12 +167,17 @@ export class OrderService {
 
   // ---------- list ----------
 
-  async findAll(query: ListOrdersQueryDto) {
+  async findAll(query: ListOrdersQueryDto, user: AuthUser) {
     const limit = query.limit ?? DEFAULT_PAGE_LIMIT;
     const offset = query.offset ?? 0;
 
     const where: FindOptionsWhere<OrderEntity> = {};
-    if (query.user_id) where.user_id = query.user_id;
+    if (user.role !== RoleEnum.ADMIN) {
+      // a normal user only ever sees their own orders, whatever filter they send
+      where.user_id = user.user_id;
+    } else if (query.user_id) {
+      where.user_id = query.user_id;
+    }
     if (query.order_status) where.order_status = query.order_status;
 
     const [data, total] = await this.orderRepository.findAndCount({
@@ -177,7 +192,7 @@ export class OrderService {
 
   // ---------- detail (items + payment) ----------
 
-  async findOne(id: number) {
+  async findOne(id: number, user?: AuthUser) {
     const order = await this.orderRepository.findOne({
       where: { id },
       relations: { items: { product: true }, payment: true },
@@ -185,6 +200,10 @@ export class OrderService {
     });
     if (!order) {
       throw new NotFoundException('Order not found');
+    }
+    // internal calls (after checkout / status change) pass no user; the controller always does
+    if (user) {
+      this.assertOwnerOrAdmin(order, user);
     }
 
     const { items, ...rest } = order;
