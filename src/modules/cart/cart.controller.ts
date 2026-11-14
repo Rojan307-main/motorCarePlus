@@ -26,8 +26,8 @@ export class CartController {
   updateItem(
     @Req() req: { user: AuthUser },
     @Param('item_id', ParseIntPipe) itemId: number,
-    @Body() dto: UpdateCartItemDto,
-  ) {
+    @Body() dto: UpdateCartItemDto,) 
+  {
     return this.cartService.updateItem(req.user.user_id, itemId, dto);
   }
 
@@ -35,8 +35,8 @@ export class CartController {
   @Delete('items/:item_id')
   removeItem(
     @Req() req: { user: AuthUser },
-    @Param('item_id', ParseIntPipe) itemId: number,
-  ) {
+    @Param('item_id', ParseIntPipe) itemId: number,) 
+{
     return this.cartService.removeItem(itemId, req.user.user_id);
   }
 
