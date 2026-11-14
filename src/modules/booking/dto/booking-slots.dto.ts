@@ -1,5 +1,5 @@
-import { IsDateString, IsInt, Min } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsDateString, IsIn, IsInt, Min, } from 'class-validator';
 
 export class BookingSlotsDto {
   @Type(() => Number)
@@ -9,4 +9,7 @@ export class BookingSlotsDto {
 
   @IsDateString()
   date!: string;
+
+  @IsIn(['car', 'bike'])
+  vehicle_type!: 'car' | 'bike';
 }
