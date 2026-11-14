@@ -6,9 +6,7 @@ import { PaymentMethodEnum } from '../../../common/enums/payment-method.enum';
 import { MAX_PAGE_LIMIT } from '../../../common/helpers/pagination.helper';
 
 export class CheckoutDto {
-  // TEMPORARY: replaced by @CurrentUser() once auth is added
-  @IsUUID()
-  user_id!: string;
+  // the user comes from the login token (req.user.user_id), never from the request
 
   @IsEnum(FulfilmentMethodEnum)
   fulfilment_method!: FulfilmentMethodEnum;
@@ -31,6 +29,7 @@ export class UpdateOrderStatusDto {
 }
 
 export class ListOrdersQueryDto {
+  // used only by an admin as an optional filter; a normal user is always limited to their own orders
   @IsOptional()
   @IsUUID()
   user_id?: string;
