@@ -1,15 +1,8 @@
-import { IsInt, IsOptional, IsUUID, Min } from 'class-validator';
+import { IsInt, IsOptional, Min } from 'class-validator';
 
-// TEMPORARY: user_id comes from @CurrentUser() once auth is added.
-export class CartUserQueryDto {
-  @IsUUID()
-  user_id!: string;
-}
+// The user always comes from the login token (req.user.user_id), never from the request.
 
 export class AddCartItemDto {
-  @IsUUID()
-  user_id!: string;
-
   @IsInt()
   @Min(1)
   product_id!: number;
@@ -22,9 +15,6 @@ export class AddCartItemDto {
 }
 
 export class UpdateCartItemDto {
-  @IsUUID()
-  user_id!: string;
-
   // the new quantity (not an increment); use DELETE to remove the item
   @IsInt()
   @Min(1)
