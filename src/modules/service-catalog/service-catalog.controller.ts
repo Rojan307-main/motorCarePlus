@@ -1,38 +1,55 @@
-import { Body, Controller, Delete, Get, Param, ParseEnumPipe, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseEnumPipe, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { ServiceCatalogService } from './service-catalog.service';
 import { CreateServiceDto, UpdateServiceDto } from './dto/service-catalog.dto';
 import { VehicleTypeEnum } from '../../common/enums/vehicle-type.enum';
+import { RolesGuard } from '@/src/common/guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { RoleEnum } from '../../common/enums/role.enum';
 
 @Controller('services')
 export class ServiceCatalogController {
   constructor(
-    private readonly serviceCatalogService: ServiceCatalogService,
-  ) {}
+    private readonly serviceCatalogService: ServiceCatalogService) {}
+
 
   @Get()
   findAll(@Query('category_id', new ParseIntPipe({ optional: true }))
     categoryId?: number,
 
-    @Query('vehicle_type', new ParseEnumPipe(VehicleTypeEnum, { optional: true }),)
+    @Query(
+      'vehicle_type',
+      new ParseEnumPipe(VehicleTypeEnum, { optional: true }),
+    )
     vehicleType?: VehicleTypeEnum,
 
     @Query('search')
     search?: string,
   ) {
-    return this.serviceCatalogService.findAll(categoryId, vehicleType, search);
+    return this.serviceCatalogService.findAll(
+      categoryId,
+      vehicleType,
+      search,
+    );
   }
+
 
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.serviceCatalogService.findOne(id);
   }
 
+
   @Post()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(RoleEnum.ADMIN)
   create(@Body() createServiceDto: CreateServiceDto) {
     return this.serviceCatalogService.create(createServiceDto);
   }
 
   @Patch(':id')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(RoleEnum.ADMIN)
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateServiceDto: UpdateServiceDto,
@@ -40,7 +57,10 @@ export class ServiceCatalogController {
     return this.serviceCatalogService.update(id, updateServiceDto);
   }
 
+
   @Delete(':id')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(RoleEnum.ADMIN)
   deactivate(@Param('id', ParseIntPipe) id: number) {
     return this.serviceCatalogService.deactivate(id);
   }
