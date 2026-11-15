@@ -1,4 +1,18 @@
-import {IsArray, IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, MaxLength, Min, ValidateNested} from 'class-validator';
+
+import {
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+  ValidateNested,
+} from 'class-validator';
+
 import { Type } from 'class-transformer';
 import { VehicleTypeEnum } from '../../../common/enums/vehicle-type.enum';
 
@@ -23,6 +37,11 @@ export class UpdateServiceCategoryDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  // Allow category activation/deactivation
+  @IsOptional()
+  @IsBoolean()
+  is_active?: boolean;
 }
 
 export class ServiceInclusionDto {

@@ -1,7 +1,13 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException} from '@nestjs/common';
+
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
-import { BookingEntity, BookingStatusEnum} from './entities/booking.entity';
+import { BookingEntity, BookingStatusEnum } from './entities/booking.entity';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingStatusDto } from './dto/update-booking-status.dto';
 import { ServiceEntity } from '../service-catalog/entities/service.entity';
@@ -17,10 +23,13 @@ export class BookingsService {
   constructor(
     @InjectRepository(BookingEntity)
     private readonly bookingRepository: Repository<BookingEntity>,
+
     @InjectRepository(ServiceEntity)
     private readonly serviceRepository: Repository<ServiceEntity>,
+
     @InjectRepository(VehicleEntity)
     private readonly vehicleRepository: Repository<VehicleEntity>,
+
     private readonly dataSource: DataSource,
   ) {}
 
@@ -68,7 +77,8 @@ export class BookingsService {
       throw new BadRequestException('Invalid booking date');
     }
 
-    const parsedDate = new Date(`${bookingDate}T00:00:00`);
+    // FIX: Explicitly parse the booking date as UTC
+    const parsedDate = new Date(`${bookingDate}T00:00:00Z`);
 
     if (
       Number.isNaN(parsedDate.getTime()) ||
@@ -110,7 +120,10 @@ export class BookingsService {
     }
   }
 
-  private async assertOwnerOrAdmin(booking: BookingEntity, user: AuthUser): Promise<void> {
+  private async assertOwnerOrAdmin(
+    booking: BookingEntity,
+    user: AuthUser,
+  ): Promise<void> {
     if (
       !this.isAdmin(user) &&
       booking.user_id !== user.user_id
@@ -121,8 +134,10 @@ export class BookingsService {
     }
   }
 
-
-  async create(dto: CreateBookingDto, user: AuthUser): Promise<BookingEntity> {
+  async create(
+    dto: CreateBookingDto,
+    user: AuthUser,
+  ): Promise<BookingEntity> {
     this.validateBookingDateAndTime(
       dto.booking_date,
       dto.start_time,
@@ -157,7 +172,6 @@ export class BookingsService {
         'You cannot book a service for another user vehicle',
       );
     }
-
 
     const vehicleType = vehicle.type;
 
@@ -195,7 +209,6 @@ export class BookingsService {
 
       const bookingRepo = manager.getRepository(BookingEntity);
 
-    
       const sameVehicleBooking = await bookingRepo
         .createQueryBuilder('booking')
         .where('booking.booking_date = :date', {
@@ -219,10 +232,11 @@ export class BookingsService {
         .getOne();
 
       if (sameVehicleBooking) {
-        throw new BadRequestException('This vehicle already has an overlapping booking');
+        throw new BadRequestException(
+          'This vehicle already has an overlapping booking',
+        );
       }
 
-   
       for (
         let step = startMinutes;
         step < endMinutes;
@@ -274,7 +288,6 @@ export class BookingsService {
     });
   }
 
-
   async findAll(user: AuthUser): Promise<BookingEntity[]> {
     const where = this.isAdmin(user)
       ? {}
@@ -289,8 +302,10 @@ export class BookingsService {
     });
   }
 
-
-  async findOne( id: number, user: AuthUser ): Promise<BookingEntity> {
+  async findOne(
+    id: number,
+    user: AuthUser,
+  ): Promise<BookingEntity> {
     const booking = await this.bookingRepository.findOne({
       where: { id },
       relations: ['user', 'vehicle', 'service'],
@@ -305,8 +320,11 @@ export class BookingsService {
     return booking;
   }
 
-
-  async updateStatus( id: number, dto: UpdateBookingStatusDto, user: AuthUser): Promise<BookingEntity> {
+  async updateStatus(
+    id: number,
+    dto: UpdateBookingStatusDto,
+    user: AuthUser,
+  ): Promise<BookingEntity> {
     const booking = await this.findOne(id, user);
 
     if (!this.isAdmin(user)) {
@@ -317,7 +335,9 @@ export class BookingsService {
           BookingStatusEnum.CONFIRMED,
         ].includes(booking.status)
       ) {
-        throw new ForbiddenException('You can only cancel your own pending or confirmed booking');
+        throw new ForbiddenException(
+          'You can only cancel your own pending or confirmed booking',
+        );
       }
     }
 
@@ -334,17 +354,25 @@ export class BookingsService {
       [BookingStatusEnum.CANCELLED]: [],
     };
 
-    const allowedStatuses = allowedTransitions[booking.status] ?? [];
+    const allowedStatuses =
+      allowedTransitions[booking.status] ?? [];
 
     if (!allowedStatuses.includes(dto.status)) {
-      throw new BadRequestException(`Cannot change booking status from ${booking.status} to ${dto.status}`);
+      throw new BadRequestException(
+        `Cannot change booking status from ${booking.status} to ${dto.status}`,
+      );
     }
+
     booking.status = dto.status;
+
     return this.bookingRepository.save(booking);
   }
 
-
-  async getAvailableSlots( serviceId: number, date: string, vehicleType: string): Promise<string[]> {
+  async getAvailableSlots(
+    serviceId: number,
+    date: string,
+    vehicleType: string,
+  ): Promise<string[]> {
     if (!['car', 'bike'].includes(vehicleType)) {
       throw new BadRequestException(
         'Vehicle type must be car or bike',
@@ -430,9 +458,11 @@ export class BookingsService {
           end,
         );
 
-        const overlappingCount = existingBookings.filter((booking) => {
+        const overlappingCount = existingBookings.filter(
+          (booking) => {
             const bookingStart = booking.start_time.slice(0, 5);
             const bookingEnd = booking.end_time.slice(0, 5);
+
             return (
               bookingStart < this.minutesToTime(stepEnd) &&
               bookingEnd > this.minutesToTime(step)
