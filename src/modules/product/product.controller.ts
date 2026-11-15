@@ -1,20 +1,24 @@
-import { Body,Controller,Delete,Get,Param,ParseIntPipe,Patch,Post,Put, Query,UploadedFile,UseGuards,UseInterceptors} from '@nestjs/common';
+import { Body,Controller,Delete,Get,Param,ParseIntPipe,Patch,Post,Put, Query,Req,UploadedFile,UseGuards,UseInterceptors} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { AuthGuard } from '@nestjs/passport';
 import { ProductService } from './product.service';
 import { CreateProductDto,GetProductQueryDto,ListProductsQueryDto,SetCompatibilityDto,UpdateProductDto} from './dto/product.dto';
 import { productPhotoMulterOptions } from '../../providers/storage/local/multer.options';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { RolesGuard } from '../../common/guard';
+import { OptionalJwtGuard, RolesGuard } from '../../common/guard';
 import { RoleEnum } from '../../common/enums/role.enum';
+import { isAdminUser } from '../../common/helpers/admin.helper';
+import type { AuthUser } from '../auth/jwt.strategy';
 
 @Controller('products')
 export class ProductController {
   constructor(private readonly productService: ProductService) {}
 
+  // public. include_inactive works only for a logged-in admin
   @Get()
-  findAll(@Query() query: ListProductsQueryDto) {
-    return this.productService.findAll(query);
+  @UseGuards(OptionalJwtGuard)
+  findAll(@Query() query: ListProductsQueryDto, @Req() req: { user?: AuthUser | null }) {
+    return this.productService.findAll({ ...query, include_inactive: isAdminUser(req.user) && query.include_inactive === true });
   }
 
   @Post()
@@ -31,12 +35,16 @@ export class ProductController {
     return this.productService.createBulk(products);
   }
 
+  // public. include_inactive works only for a logged-in admin
   @Get(':id')
+  @UseGuards(OptionalJwtGuard)
   findOne(
     @Param('id', ParseIntPipe) id: number,
     @Query() query: GetProductQueryDto,
+    @Req() req: { user?: AuthUser | null },
   ) {
-    return this.productService.findOne(id, query.include_inactive ?? false);
+    const includeInactive = isAdminUser(req.user) && query.include_inactive === true;
+    return this.productService.findOne(id, includeInactive);
   }
 
   @Patch(':id')
