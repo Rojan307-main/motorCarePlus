@@ -1,13 +1,7 @@
-
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Repository } from 'typeorm';
-import { BookingEntity, BookingStatusEnum } from './entities/booking.entity';
+import { DataSource, FindManyOptions, In, Repository } from 'typeorm';
+import { BookingEntity, BookingStatusEnum} from './entities/booking.entity';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingStatusDto } from './dto/update-booking-status.dto';
 import { ServiceEntity } from '../service-catalog/entities/service.entity';
@@ -23,13 +17,10 @@ export class BookingsService {
   constructor(
     @InjectRepository(BookingEntity)
     private readonly bookingRepository: Repository<BookingEntity>,
-
     @InjectRepository(ServiceEntity)
     private readonly serviceRepository: Repository<ServiceEntity>,
-
     @InjectRepository(VehicleEntity)
     private readonly vehicleRepository: Repository<VehicleEntity>,
-
     private readonly dataSource: DataSource,
   ) {}
 
@@ -56,6 +47,7 @@ export class BookingsService {
 
   private timeToMinutes(time: string): number {
     const [hours, minutes] = time.split(':').map(Number);
+
     return hours * 60 + minutes;
   }
 
@@ -77,7 +69,6 @@ export class BookingsService {
       throw new BadRequestException('Invalid booking date');
     }
 
-    // FIX: Explicitly parse the booking date as UTC
     const parsedDate = new Date(`${bookingDate}T00:00:00Z`);
 
     if (
@@ -107,12 +98,15 @@ export class BookingsService {
       );
     }
 
+    const now = new Date();
+
+    const currentTime =
+      `${String(now.getHours()).padStart(2, '0')}:` +
+      `${String(now.getMinutes()).padStart(2, '0')}`;
+
     if (
       bookingDate === this.getToday() &&
-      startMinutes <= this.timeToMinutes(
-        `${String(new Date().getHours()).padStart(2, '0')}:` +
-        `${String(new Date().getMinutes()).padStart(2, '0')}`,
-      )
+      startMinutes <= this.timeToMinutes(currentTime)
     ) {
       throw new BadRequestException(
         'Booking time has already passed',
@@ -191,7 +185,9 @@ export class BookingsService {
     }
 
     const startMinutes = this.timeToMinutes(dto.start_time);
-    const endMinutes = startMinutes + service.duration_minutes;
+
+    const endMinutes =
+      startMinutes + service.duration_minutes;
 
     if (endMinutes > 18 * 60) {
       throw new BadRequestException(
@@ -207,7 +203,8 @@ export class BookingsService {
         [`${dto.booking_date}:${vehicleType}`],
       );
 
-      const bookingRepo = manager.getRepository(BookingEntity);
+      const bookingRepo =
+        manager.getRepository(BookingEntity);
 
       const sameVehicleBooking = await bookingRepo
         .createQueryBuilder('booking')
@@ -287,19 +284,52 @@ export class BookingsService {
       return bookingRepo.save(booking);
     });
   }
+  async findAll(
+    query: FindManyOptions<BookingEntity>,
+    user: AuthUser,
+  ): Promise<{
+    data: BookingEntity[];
+    total: number;
+  }> {
+    // Read pagination values from QueryParserPipe
+    const requestedLimit = Number(query?.take ?? 10);
+    const requestedOffset = Number(query?.skip ?? 0);
 
-  async findAll(user: AuthUser): Promise<BookingEntity[]> {
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(
+          Math.max(Math.floor(requestedLimit), 1),
+          100,
+        )
+      : 10;
+
+    const offset = Number.isFinite(requestedOffset)
+      ? Math.max(Math.floor(requestedOffset), 0)
+      : 0;
     const where = this.isAdmin(user)
       ? {}
       : { user_id: user.user_id };
 
-    return this.bookingRepository.find({
-      where,
-      relations: ['user', 'vehicle', 'service'],
-      order: {
-        created_at: 'DESC',
-      },
-    });
+    // Fetch paginated bookings and total count
+    const [data, total] =
+      await this.bookingRepository.findAndCount({
+        ...query,
+
+        where,
+
+        relations: ['user', 'vehicle', 'service'],
+
+        order: {
+          created_at: 'DESC',
+        },
+
+        take: limit,
+        skip: offset,
+      });
+
+    return {
+      data,
+      total,
+    };
   }
 
   async findOne(
@@ -341,16 +371,22 @@ export class BookingsService {
       }
     }
 
-    const allowedTransitions: Record<string, BookingStatusEnum[]> = {
+    const allowedTransitions: Record<
+      string,
+      BookingStatusEnum[]
+    > = {
       [BookingStatusEnum.PENDING]: [
         BookingStatusEnum.CONFIRMED,
         BookingStatusEnum.CANCELLED,
       ],
+
       [BookingStatusEnum.CONFIRMED]: [
         BookingStatusEnum.COMPLETED,
         BookingStatusEnum.CANCELLED,
       ],
+
       [BookingStatusEnum.COMPLETED]: [],
+
       [BookingStatusEnum.CANCELLED]: [],
     };
 
@@ -403,23 +439,33 @@ export class BookingsService {
       throw new BadRequestException('Invalid booking date');
     }
 
+    const parsedDate = new Date(`${date}T00:00:00Z`);
+
+    if (
+      Number.isNaN(parsedDate.getTime()) ||
+      parsedDate.toISOString().slice(0, 10) !== date
+    ) {
+      throw new BadRequestException('Invalid booking date');
+    }
+
     if (date < this.getToday()) {
       throw new BadRequestException(
         'Booking date cannot be in the past',
       );
     }
 
-    const existingBookings = await this.bookingRepository.find({
-      where: {
-        booking_date: date,
-        vehicle_type: vehicleType as any,
-        status: In([
-          BookingStatusEnum.PENDING,
-          BookingStatusEnum.CONFIRMED,
-        ]),
-      },
-      select: ['start_time', 'end_time'],
-    });
+    const existingBookings =
+      await this.bookingRepository.find({
+        where: {
+          booking_date: date,
+          vehicle_type: vehicleType as any,
+          status: In([
+            BookingStatusEnum.PENDING,
+            BookingStatusEnum.CONFIRMED,
+          ]),
+        },
+        select: ['start_time', 'end_time'],
+      });
 
     const slots: string[] = [];
 
@@ -458,17 +504,19 @@ export class BookingsService {
           end,
         );
 
-        const overlappingCount = existingBookings.filter(
-          (booking) => {
-            const bookingStart = booking.start_time.slice(0, 5);
-            const bookingEnd = booking.end_time.slice(0, 5);
+        const overlappingCount =
+          existingBookings.filter((booking) => {
+            const bookingStart =
+              booking.start_time.slice(0, 5);
+
+            const bookingEnd =
+              booking.end_time.slice(0, 5);
 
             return (
               bookingStart < this.minutesToTime(stepEnd) &&
               bookingEnd > this.minutesToTime(step)
             );
-          },
-        ).length;
+          }).length;
 
         if (overlappingCount >= BAYS_PER_TYPE) {
           hasFreeBay = false;

@@ -34,7 +34,6 @@ export class BookingsController {
   }
 
 
-  // GET /bookings?limit=10&offset=0
   @Get()
   findAll(
     @Query(new QueryParserPipe('MANY'))

@@ -1,25 +1,10 @@
-
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-
 import { ServiceEntity } from './entities/service.entity';
 import { ServiceCategoryEntity } from './entities/service-category.entity';
 import { ServiceInclusionEntity } from './entities/service-inclusion.entity';
-
-import {
-  CreateServiceDto,
-  UpdateServiceDto,
-  CreateServiceCategoryDto,
-  UpdateServiceCategoryDto,
-} from './dto/service-catalog.dto';
-
+import { CreateServiceDto, UpdateServiceDto, CreateServiceCategoryDto, UpdateServiceCategoryDto } from './dto/service-catalog.dto';
 import { VehicleTypeEnum } from '../../common/enums/vehicle-type.enum';
 
 @Injectable()
@@ -27,13 +12,10 @@ export class ServiceCatalogService {
   constructor(
     @InjectRepository(ServiceEntity)
     private readonly serviceRepository: Repository<ServiceEntity>,
-
     @InjectRepository(ServiceCategoryEntity)
     private readonly categoryRepository: Repository<ServiceCategoryEntity>,
-
     @InjectRepository(ServiceInclusionEntity)
     private readonly inclusionRepository: Repository<ServiceInclusionEntity>,
-
     private readonly dataSource: DataSource,
   ) {}
 
@@ -315,8 +297,7 @@ export class ServiceCatalogService {
 
   async updateCategory(
     id: number,
-    updateCategoryDto: UpdateServiceCategoryDto,
-  ): Promise<ServiceCategoryEntity> {
+    updateCategoryDto: UpdateServiceCategoryDto,): Promise<ServiceCategoryEntity> {
     const category = await this.categoryRepository.findOne({
       where: { id },
     });
@@ -351,8 +332,6 @@ export class ServiceCatalogService {
     if (updateCategoryDto.description !== undefined) {
       category.description = updateCategoryDto.description;
     }
-
-    // NEW: Allow admin to activate or deactivate a category
     if (updateCategoryDto.is_active !== undefined) {
       category.is_active = updateCategoryDto.is_active;
     }
