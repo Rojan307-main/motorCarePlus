@@ -1,6 +1,10 @@
-import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { VehicleService } from './vehicle.service';
 import { CreateMakeDto, CreateModelDto, GetMakesQueryDto, GetModelsQueryDto, } from './dto/vehicle.dto';
+import { RoleEnum } from '../../common/enums/role.enum';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { RolesGuard } from '../../common/guard';
 
 @Controller('vehicles/catalog')
 export class VehicleCatalogController {
@@ -12,20 +16,23 @@ export class VehicleCatalogController {
     return this.vehicleService.findAllMakes(query);
   }
 
-  // TODO (after auth): admin only
+  // Admin only
   @Post('makes')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(RoleEnum.ADMIN)
   createMake(@Body() createMakeDto: CreateMakeDto) {
     return this.vehicleService.createMake(createMakeDto);
   }
 
-  // GET /vehicles/catalog/models?make_id=<uuid>
   @Get('models')
   findAllModels(@Query() query: GetModelsQueryDto) {
     return this.vehicleService.findAllModels(query);
   }
 
-  // TODO (after auth): admin only
+  // Admin only
   @Post('models')
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(RoleEnum.ADMIN)
   createModel(@Body() createModelDto: CreateModelDto) {
     return this.vehicleService.createModel(createModelDto);
   }

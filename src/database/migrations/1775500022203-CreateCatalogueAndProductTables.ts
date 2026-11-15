@@ -1,14 +1,6 @@
-import {
-  MigrationInterface,
-  QueryRunner,
-  Table,
-  TableForeignKey,
-  TableIndex,
-} from 'typeorm';
+import {MigrationInterface, QueryRunner, Table, TableForeignKey, TableIndex } from 'typeorm';
 
-export class CreateCatalogueAndProductTables1775500022203
-  implements MigrationInterface
-{
+export class CreateCatalogueAndProductTables1775500022203 implements MigrationInterface{
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.createTable(
       new Table({
@@ -71,7 +63,6 @@ export class CreateCatalogueAndProductTables1775500022203
         columnNames: ['parent_id'],
       }),
     );
-
     await queryRunner.createTable(
       new Table({
         name: 'brands',
@@ -101,7 +92,6 @@ export class CreateCatalogueAndProductTables1775500022203
       true,
     );
 
-    // ---------- products ----------
     await queryRunner.createTable(
       new Table({
         name: 'products',
@@ -191,6 +181,7 @@ export class CreateCatalogueAndProductTables1775500022203
           },
         ],
         checks: [
+          // stock can never go below zero, enforced by the database itself
           { name: 'CHK_products_stock_non_negative', expression: '"stock" >= 0' },
           { name: 'CHK_products_price_non_negative', expression: '"price" >= 0' },
           {
@@ -225,6 +216,7 @@ export class CreateCatalogueAndProductTables1775500022203
         onDelete: 'RESTRICT',
       }),
     );
+
     await queryRunner.createIndices('products', [
       new TableIndex({ name: 'IDX_products_category_id', columnNames: ['category_id'] }),
       new TableIndex({ name: 'IDX_products_brand_id', columnNames: ['brand_id'] }),
@@ -232,6 +224,7 @@ export class CreateCatalogueAndProductTables1775500022203
       new TableIndex({ name: 'IDX_products_vehicle_type', columnNames: ['vehicle_type'] }),
       new TableIndex({ name: 'IDX_products_name', columnNames: ['name'] }),
     ]);
+
     await queryRunner.createTable(
       new Table({
         name: 'product_compatibility',

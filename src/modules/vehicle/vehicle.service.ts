@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException, } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException, } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FindManyOptions, Repository } from 'typeorm';
 import { VehicleEntity } from './entities/vehicle.entity';
@@ -7,6 +7,8 @@ import { VehicleModelEntity } from './entities/vehicle-model.entity';
 import { CreateMakeDto, CreateModelDto, CreateVehicleDto, GetMakesQueryDto, GetModelsQueryDto, UpdateVehicleDto, } from './dto/vehicle.dto';
 import { UserService } from '../user/user.service';
 import { VehicleTypeEnum } from '../../common/enums/vehicle-type.enum';
+import { RoleEnum } from '../../common/enums/role.enum';
+import type { AuthUser } from '../auth/jwt.strategy';
 
 @Injectable()
 export class VehicleService {
@@ -41,8 +43,14 @@ export class VehicleService {
     }
   }
 
-  async create(createVehicleDto: CreateVehicleDto): Promise<VehicleEntity> {
-    await this.userService.findOne(createVehicleDto.user_id); 
+  private assertOwnerOrAdmin(vehicle: VehicleEntity, user: AuthUser) {
+    if (user.role !== RoleEnum.ADMIN && vehicle.user_id !== user.user_id) {
+      throw new ForbiddenException('You can only access your own vehicles');
+    }
+  }
+
+  async create(user_id: string, createVehicleDto: CreateVehicleDto): Promise<VehicleEntity> {
+    await this.userService.findOne(user_id);
     await this.getModelOrFail(createVehicleDto.model_id, createVehicleDto.type);
 
     const registration_number = createVehicleDto.registration_number.trim().toUpperCase();
@@ -50,7 +58,7 @@ export class VehicleService {
 
     const saved = await this.vehicleRepository.save(
       this.vehicleRepository.create({
-        user_id: createVehicleDto.user_id,
+        user_id,
         model_id: createVehicleDto.model_id,
         type: createVehicleDto.type,
         year: createVehicleDto.year ?? null,
@@ -60,18 +68,28 @@ export class VehicleService {
     return this.findOne(saved.id);
   }
 
-  async findAll(query: FindManyOptions<VehicleEntity>) {
+  async findAll(query: FindManyOptions<VehicleEntity>, user: AuthUser) {
+    if (user.role !== RoleEnum.ADMIN) {
+      const where = query.where;
+      query = {
+        ...query,
+        where: Array.isArray(where) && where.length
+          ? where.map((w) => ({ ...w, user_id: user.user_id }))
+          : { ...(Array.isArray(where) ? {} : where), user_id: user.user_id },
+      };
+    }
+
     const [data, total] = await this.vehicleRepository.findAndCount({
       order: { created_at: 'DESC' },
       take: 10,
       ...query,
-      select: undefined, 
-      relations: { model: { make: true } }, 
+      select: undefined,
+      relations: { model: { make: true } },
     });
     return { data, total };
   }
 
-  async findOne(id: string): Promise<VehicleEntity> {
+  async findOne(id: string, user?: AuthUser): Promise<VehicleEntity> {
     const vehicle = await this.vehicleRepository.findOne({
       where: { id },
       relations: { model: { make: true } },
@@ -79,11 +97,14 @@ export class VehicleService {
     if (!vehicle) {
       throw new NotFoundException(`Vehicle with ID ${id} not found`);
     }
+    if (user) {
+      this.assertOwnerOrAdmin(vehicle, user);
+    }
     return vehicle;
   }
 
-  async update(id: string, updateVehicleDto: UpdateVehicleDto): Promise<VehicleEntity> {
-    const vehicle = await this.findOne(id);
+  async update(id: string, updateVehicleDto: UpdateVehicleDto, user: AuthUser): Promise<VehicleEntity> {
+    const vehicle = await this.findOne(id, user);
     const changes: Partial<Pick<VehicleEntity, 'model_id' | 'year' | 'registration_number'>> = {};
 
     if (updateVehicleDto.model_id) {
@@ -105,8 +126,8 @@ export class VehicleService {
     return this.findOne(id);
   }
 
-  async remove(id: string) {
-    const vehicle = await this.findOne(id);
+  async remove(id: string, user: AuthUser) {
+    const vehicle = await this.findOne(id, user);
     await this.vehicleRepository.remove(vehicle);
     return { message: 'Vehicle deleted' };
   }
@@ -140,8 +161,7 @@ export class VehicleService {
     );
 
     if (createMakeDto.models?.length) {
-      await this.modelRepository.save(
-        createMakeDto.models.map((model) =>
+      await this.modelRepository.save(createMakeDto.models.map((model) =>
           this.modelRepository.create({ make_id: make.id, name: model.trim() }),
         ),
       );

@@ -2,10 +2,6 @@ import { ArrayUnique, IsArray, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Is
 import { VehicleTypeEnum } from '../../../common/enums/vehicle-type.enum';
 
 export class CreateVehicleDto {
-  // TEMPORARY: replaced by @CurrentUser() once auth is added
-  @IsUUID()
-  user_id!: string;
-
   @IsIn([VehicleTypeEnum.CAR, VehicleTypeEnum.BIKE], {
     message: 'Vehicle type must be either car or bike',
   })
