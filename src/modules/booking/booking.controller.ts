@@ -1,4 +1,6 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import { FindManyOptions } from 'typeorm';
+import { QueryParserPipe } from '../../common/pipes/QueryParserPipe';
 import { AuthGuard } from '@nestjs/passport';
 import type { AuthUser } from '../auth/jwt.strategy';
 import { BookingsService } from './booking.service';
@@ -33,8 +35,12 @@ export class BookingsController {
 
 
   @Get()
-  findAll(@Req() req: { user: AuthUser }): Promise<BookingEntity[]> {
-    return this.bookingsService.findAll(req.user);
+  findAll(
+    @Query(new QueryParserPipe('MANY'))
+    query: FindManyOptions<BookingEntity>,
+    @Req() req: { user: AuthUser },
+  ): Promise<{ data: BookingEntity[]; total: number }> {
+    return this.bookingsService.findAll(query, req.user);
   }
 
   @Get(':id')

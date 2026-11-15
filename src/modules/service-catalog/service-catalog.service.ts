@@ -4,7 +4,7 @@ import { DataSource, Repository } from 'typeorm';
 import { ServiceEntity } from './entities/service.entity';
 import { ServiceCategoryEntity } from './entities/service-category.entity';
 import { ServiceInclusionEntity } from './entities/service-inclusion.entity';
-import { CreateServiceDto, UpdateServiceDto, CreateServiceCategoryDto, UpdateServiceCategoryDto,} from './dto/service-catalog.dto';
+import { CreateServiceDto, UpdateServiceDto, CreateServiceCategoryDto, UpdateServiceCategoryDto } from './dto/service-catalog.dto';
 import { VehicleTypeEnum } from '../../common/enums/vehicle-type.enum';
 
 @Injectable()
@@ -28,7 +28,9 @@ export class ServiceCatalogService {
       .createQueryBuilder('service')
       .leftJoinAndSelect('service.category', 'category')
       .leftJoinAndSelect('service.inclusions', 'inclusion')
-      .where('service.is_active = :isActive', { isActive: true })
+      .where('service.is_active = :isActive', {
+        isActive: true,
+      })
       .andWhere('category.is_active = :categoryActive', {
         categoryActive: true,
       });
@@ -39,7 +41,8 @@ export class ServiceCatalogService {
       });
     }
 
-    if (vehicleType !== undefined) {query.andWhere(
+    if (vehicleType !== undefined) {
+      query.andWhere(
         '(service.vehicle_type = :vehicleType OR service.vehicle_type = :both)',
         {
           vehicleType,
@@ -48,9 +51,13 @@ export class ServiceCatalogService {
       );
     }
 
-    if (search?.trim()) {query.andWhere('LOWER(service.name) LIKE LOWER(:search)', {
-        search: `%${search.trim()}%`,
-      });
+    if (search?.trim()) {
+      query.andWhere(
+        'LOWER(service.name) LIKE LOWER(:search)',
+        {
+          search: `%${search.trim()}%`,
+        },
+      );
     }
 
     return query
@@ -83,7 +90,9 @@ export class ServiceCatalogService {
     return service;
   }
 
-  async create(createServiceDto: CreateServiceDto): Promise<ServiceEntity> {
+  async create(
+    createServiceDto: CreateServiceDto,
+  ): Promise<ServiceEntity> {
     const category = await this.categoryRepository.findOne({
       where: {
         id: createServiceDto.category_id,
@@ -92,7 +101,9 @@ export class ServiceCatalogService {
     });
 
     if (!category) {
-      throw new NotFoundException('Active service category not found');
+      throw new NotFoundException(
+        'Active service category not found',
+      );
     }
 
     const service = this.serviceRepository.create({
@@ -116,7 +127,10 @@ export class ServiceCatalogService {
     return this.serviceRepository.save(service);
   }
 
-  async update(id: number, updateServiceDto: UpdateServiceDto): Promise<ServiceEntity> {
+  async update(
+    id: number,
+    updateServiceDto: UpdateServiceDto,
+  ): Promise<ServiceEntity> {
     return this.dataSource.transaction(async (manager) => {
       const serviceRepo = manager.getRepository(ServiceEntity);
       const categoryRepo = manager.getRepository(ServiceCategoryEntity);
@@ -142,7 +156,9 @@ export class ServiceCatalogService {
         });
 
         if (!category) {
-          throw new NotFoundException('Active service category not found');
+          throw new NotFoundException(
+            'Active service category not found',
+          );
         }
 
         service.category_id = category.id;
@@ -151,7 +167,6 @@ export class ServiceCatalogService {
       if (updateServiceDto.name !== undefined) {
         service.name = updateServiceDto.name;
       }
-
 
       if (updateServiceDto.vehicle_type !== undefined) {
         service.vehicle_type = updateServiceDto.vehicle_type;
@@ -178,7 +193,9 @@ export class ServiceCatalogService {
           service_id: service.id,
         });
 
-        const newInclusions = updateServiceDto.inclusions.map((inclusion, index) =>inclusionRepo.create({
+        const newInclusions = updateServiceDto.inclusions.map(
+          (inclusion, index) =>
+            inclusionRepo.create({
               service_id: service.id,
               title: inclusion.title,
               sort_order: inclusion.sort_order ?? index,
@@ -221,7 +238,9 @@ export class ServiceCatalogService {
     }
 
     if (!service.is_active) {
-      throw new BadRequestException('Service is already inactive');
+      throw new BadRequestException(
+        'Service is already inactive',
+      );
     }
 
     service.is_active = false;
@@ -235,41 +254,58 @@ export class ServiceCatalogService {
 
   async findAllCategories(): Promise<ServiceCategoryEntity[]> {
     return this.categoryRepository.find({
-      where: { is_active: true },
-      order: { name: 'ASC' },
+      where: {
+        is_active: true,
+      },
+      order: {
+        name: 'ASC',
+      },
     });
   }
 
-  async createCategory(createCategoryDto: CreateServiceCategoryDto): Promise<ServiceCategoryEntity> {
+  async createCategory(
+    createCategoryDto: CreateServiceCategoryDto,
+  ): Promise<ServiceCategoryEntity> {
     const existingCategory = await this.categoryRepository.findOne({
-      where: { name: createCategoryDto.name },
+      where: {
+        name: createCategoryDto.name,
+      },
     });
 
     if (existingCategory) {
-      throw new ConflictException('This category already exists');
+      throw new ConflictException(
+        'This category already exists',
+      );
     }
 
-    const category = this.categoryRepository.create(createCategoryDto);
+    const category = this.categoryRepository.create(
+      createCategoryDto,
+    );
 
     try {
       return await this.categoryRepository.save(category);
     } catch (error) {
-
       if ((error as any)?.driverError?.code === '23505') {
-        throw new ConflictException('This category already exists');
+        throw new ConflictException(
+          'This category already exists',
+        );
       }
 
       throw error;
     }
   }
 
-  async updateCategory(id: number, updateCategoryDto: UpdateServiceCategoryDto): Promise<ServiceCategoryEntity> {
+  async updateCategory(
+    id: number,
+    updateCategoryDto: UpdateServiceCategoryDto,): Promise<ServiceCategoryEntity> {
     const category = await this.categoryRepository.findOne({
       where: { id },
     });
 
     if (!category) {
-      throw new NotFoundException('Service category not found');
+      throw new NotFoundException(
+        'Service category not found',
+      );
     }
 
     if (
@@ -277,21 +313,36 @@ export class ServiceCatalogService {
       updateCategoryDto.name !== category.name
     ) {
       const existingCategory = await this.categoryRepository.findOne({
-        where: { name: updateCategoryDto.name },
+        where: {
+          name: updateCategoryDto.name,
+        },
       });
 
       if (existingCategory) {
-        throw new ConflictException('This category already exists');
+        throw new ConflictException(
+          'This category already exists',
+        );
       }
     }
 
-    Object.assign(category, updateCategoryDto);
+    if (updateCategoryDto.name !== undefined) {
+      category.name = updateCategoryDto.name;
+    }
+
+    if (updateCategoryDto.description !== undefined) {
+      category.description = updateCategoryDto.description;
+    }
+    if (updateCategoryDto.is_active !== undefined) {
+      category.is_active = updateCategoryDto.is_active;
+    }
 
     try {
       return await this.categoryRepository.save(category);
     } catch (error) {
       if ((error as any)?.driverError?.code === '23505') {
-        throw new ConflictException('This category already exists');
+        throw new ConflictException(
+          'This category already exists',
+        );
       }
 
       throw error;
