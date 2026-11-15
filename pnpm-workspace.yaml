@@ -3,6 +3,6 @@ allowBuilds:
   '@scarf/scarf': true
   '@swc/core': true
   argon2: true
-  bcrypt: set this to true or false
+  bcrypt: false
   msgpackr-extract: true
   unrs-resolver: true

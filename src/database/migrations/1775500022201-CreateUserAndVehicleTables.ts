@@ -38,7 +38,9 @@ export class CreateUserAndVehicleTables1775500022201 implements MigrationInterfa
           },
           {
             name: 'role',
-            type: 'varchar',
+            type: 'enum',
+            enum: ['ROLE_ADMIN', 'ROLE_USER'],
+            enumName: 'users_role_enum',
             default: "'ROLE_USER'",
             isNullable: false,
           },
@@ -215,5 +217,6 @@ export class CreateUserAndVehicleTables1775500022201 implements MigrationInterfa
 
     await queryRunner.dropTable('vehicle_makes', true);
     await queryRunner.dropTable('users', true);
+    await queryRunner.query(`DROP TYPE IF EXISTS "users_role_enum"`);
   }
 }

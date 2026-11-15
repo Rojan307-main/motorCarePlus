@@ -1,4 +1,8 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, Matches } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString, Matches, IsEnum } from 'class-validator';
+import { RoleEnum } from '../../../common/enums/role.enum';
+
+const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d).{6,}$/;
+const PASSWORD_MESSAGE ='Password must be at least 6 characters long and contain at least one letter and one number';
 
 export class CreateUserDto {
   @IsEmail({}, { message: 'Please provide a valid email address' })
@@ -7,9 +11,7 @@ export class CreateUserDto {
 
   @IsString()
   @IsNotEmpty({ message: 'Password cannot be empty' })
-  @Matches(/^(?=.*[A-Za-z])(?=.*\d).{6,}$/, {
-    message: 'Password must be at least 6 characters long and contain at least one letter and one number',
-  })
+  @Matches(PASSWORD_REGEX, { message: PASSWORD_MESSAGE })
   password!: string;
 
   @IsString()
@@ -23,6 +25,15 @@ export class CreateUserDto {
 
 export class UpdateUserDto {
   @IsOptional()
+  @IsEmail({}, { message: 'Please provide a valid email address' })
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(PASSWORD_REGEX, { message: PASSWORD_MESSAGE })
+  password?: string;
+
+  @IsOptional()
   @IsString()
   @IsNotEmpty({ message: 'Full name cannot be empty' })
   full_name?: string;
@@ -30,4 +41,9 @@ export class UpdateUserDto {
   @IsOptional()
   @IsString()
   phone_number?: string;
+}
+
+export class UpdateRoleDto {
+  @IsEnum(RoleEnum, { message: 'Invalid role' })
+  role!: RoleEnum;
 }

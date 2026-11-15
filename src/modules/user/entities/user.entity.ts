@@ -18,7 +18,7 @@ export class UserEntity {
   @Column({ type: 'varchar', nullable: true })
   phone_number!: string | null;
 
-  @Column({ type: 'varchar', default: RoleEnum.USER })
+  @Column({ type: 'enum', enum: RoleEnum, default: RoleEnum.USER })
   role!: RoleEnum;
 
   @CreateDateColumn()

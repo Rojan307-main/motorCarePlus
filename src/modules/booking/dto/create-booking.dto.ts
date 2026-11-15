@@ -1,19 +1,12 @@
-import { IsDateString, IsEnum, IsInt, IsUUID, Matches, Min } from 'class-validator';
-import { VehicleTypeEnum } from '../../../common/enums/vehicle-type.enum';
+import { IsDateString, IsInt, IsUUID, Matches, Min } from 'class-validator';
 
 export class CreateBookingDto {
-  @IsUUID()
-  user_id!: string;
-
   @IsInt()
   @Min(1)
   service_id!: number;
 
   @IsUUID()
   vehicle_id!: string;
-
-  @IsEnum(VehicleTypeEnum)
-  vehicle_type!: VehicleTypeEnum;
 
   @IsDateString()
   booking_date!: string;
